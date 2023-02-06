@@ -1,0 +1,89 @@
+provider "aws" {
+  region = "us-west-2"
+}
+
+resource "aws_iam_role" "k8s_master_role" {
+  name = "k8s-master-role"
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "ec2.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy" "k8s_master_policy" {
+  name = "k8s-master-policy"
+  role = aws_iam_role.k8s_master_role.id
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "elasticloadbalancing:*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "autoscaling:*"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_launch_configuration" "k8s_master_config" {
+  image_id = "ami-0ff8a91507f77f867"
+  instance_type = "t2.micro"
+  iam_instance_profile = aws_iam_role.k8s_master_role.name
+  key_name = "my-key-pair"
+  security_groups = [aws_security_group.k8s_master_security_group.name]
+  user_data = <<EOF
+#!/usr/bin/env bash
+
+apt-get update
+apt-get install -y kubeadm kubectl kubelet
+
+EOF
+}
+
+resource "aws_security_group" "k8s_master_security_group" {
+  name = "k8s-master-security-group"
+  description = "Security group for k8s master nodes"
+  ingress {
+    from_port = 22
+    to_port = 22
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_autoscaling_group" "k8s_master_asg" {
+  name = "k8s-master-asg"
+  launch_configuration = aws_launch_configuration.k8s_master_config.name
+  min_size = 1
+  max_size = 3
+  desired_capacity = 1
+  vpc_zone_identifier = [aws_subnet.k8s_master_subnet.id]
+}
