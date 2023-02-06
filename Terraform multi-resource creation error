@@ -1,0 +1,5 @@
+Syntax errors: Incorrect syntax in Terraform configuration files can cause multi-resource creation to fail.
+Missing dependencies: If a resource depends on another resource that has not been created yet, Terraform will fail to create the dependent resource.
+Resource conflicts: If two or more resources have conflicting configurations, Terraform will be unable to create them both.
+Provider limitations: Some Terraform providers may have limitations or restrictions that prevent the creation of certain resources in a single operation.
+Incorrect resource types: Terraform can only create specific resource types, and attempting to create an unsupported resource type can result in an error.
